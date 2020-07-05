@@ -40,3 +40,13 @@ vignettes/*.pdf
 
 # R Studio Project File
 *.Rproj
+
+# ignore the src data files
+*.bz2
+*.rds
+
+# Ignore html output
+*.html
+
+# Rpubs intermediate files
+rsconnect/
