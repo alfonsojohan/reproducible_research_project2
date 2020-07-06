@@ -1,3 +1,157 @@
-Impact of Weather Events to Population Health and Economic Consequences in United States
-=============================================================================
+---
+# TODO Update the title once we have the findings
+title: "Impact of Weather Events to Health and Economy in United States"
+author: "A. Johan"
+output: html_document
+---
 
+## Synopsis
+
+-- TODO --
+
+## Introduction 
+
+The final project for the course Reproducible Research is the study of the 
+impact of weather events on population health and economic consequences. 
+To do so, we will explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+The explanation of the data can be found at the following links:
+
+- [National Weather Service Storm Data Documentation][1]
+- [National Climatic Data Center Storm Events FAQ][2]
+
+[1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
+[2]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf
+
+## Data Processing
+
+For this analysis we will be using the following libraries:
+
+- dplyr
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Load the libraries 
+library(dplyr)
+```
+
+
+### Downloading and reading the data
+
+Source data is provided by the course website and can be downloaded here:
+[Storm Data][3]
+
+[3]: https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
+
+The source data is compressed in bzip2 format. It is a CSV file. 
+Fortunately R has the capability to directly read CSV files compressed in 
+bzip2 format.
+
+```{r, cache=TRUE}
+# download source data
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+dest <- "stormdata.csv.bz2"
+rdsfile <- "stormdata.rds"
+
+# Download the file and save it to dest if it not present in the folder
+if (!file.exists(dest)){
+  download.file(url = url, destfile = dest, quiet = TRUE)
+}
+
+# TODO uncomment below prior to submission
+# data <- as_tibble(read.csv(dest))
+
+# TODO remove this before submissions
+if (!file.exists(rdsfile)) {
+  saveRDS(read.csv(dest), file = rdsfile)
+}
+if(length(ls(pattern = "data")) == 0) {
+data <- as_tibble(readRDS(rdsfile))
+}
+```
+
+Initial inspection of the data:
+
+- There are `r nrow(data)` observations with `r ncol(data)` variables
+- Some of the event labels are in uppercase and lowercase
+text which causes R to treat them differently. Some EVTYPE labels also include
+white spaces. To simplify the analysis, leading and trailing white spaces
+will be removed and all of the event type names will be converted to uppercase
+
+```{r, cache=TRUE}
+# Trim white spaces and convert all EVTYPE to upper case
+data$EVTYPE <- toupper(trimws(data$EVTYPE))
+```
+
+### Data Cleaning and Transformation
+
+To see effect of event to fatalities and injuries in the population we can 
+summarize the data by the total  fatalities, total injuries, frequency of events.
+We can then combine total fatalities and total injuries into a single variable called
+total_casualty.
+
+```{r, cache=TRUE}
+health_summary <- data %>% 
+  group_by(EVTYPE) %>% 
+  summarise(total_fatalities = sum(FATALITIES), 
+            total_injuries = sum(INJURIES), .groups = "keep")
+
+ev_freq <- data %>% group_by(EVTYPE) %>% tally()
+
+# Merge the count and then calculate the total casualty 
+health_summary <- merge(health_summary, ev_freq, by = "EVTYPE") %>%
+  mutate(total_casualty = total_fatalities + total_injuries)
+```
+
+To see the effect of the events on the economic factors we can do a summary by 
+the variable `PROPDMG` and `CROPDMG`. Care should be taken however since
+there is another variable called `PROPDMGEXP` and `CROPDMGEXP` which seems to
+imply a scalar multiplication to the amount.
+
+We will refer to the analysis done on [this following website][4] visited 
+on July 6, 2020 to translate the exponential values.
+
+[4]: https://rstudio-pubs-static.s3.amazonaws.com/58957_37b6723ee52b455990e149edde45e5b6.html
+
+To summarize, the exponential values are:
+
+|Label|Multiplier|
+|-----|----------|
+|H,h | 100|
+|K,k | 1,000 |
+|M,m | 1,000,000|
+|B,b | 1,000,000,000|
+|Numeric 0..8 | 10 |
+|+ | 1|
+|- | 0|
+|? | 0|
+|Blank/empty character | 0
+
+We will normalize the crop and property damage value by creating a new variable 
+`PROPAMT` and `CROPAMT` which will contain the respective `xDMG` variables 
+multiplied by the scalar in `xDMGEXP`.
+
+An important point to note is that we should substitute the `numeric 0..8` values
+first to avoid confusion when substituting for the `+` symbol. 
+
+```{r}
+# Since the list of values to substitute is not a lot we can do this 
+# individually. to simplify convert all to uppercase
+data$PROPDMGEXP <- toupper(data$PROPDMGEXP)
+data$CROPDMGEXP <- toupper(data$CROPDMGEXP)
+
+# NOTE: we must replace with character which we will cast to numeric after all 
+# substitution is done
+
+# replace the numeric values with 10
+data[data$PROPDMGEXP == as.character(c(1:8)), "PROPDMGEXP"] <- "10"
+
+# replace the 0 values 
+data[data$PROPDMGEXP == "", "PROPDMGEXP"] <- "0"
+data[grepl("-|\\?", x$PROPDMGEXP), "PROPDMGEXP"] <- "0"
+
+```
+
+
+## Results
+
+-- TODO --
