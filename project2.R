@@ -12,9 +12,10 @@ if (!file.exists(dest)){
 }
 
 # Read the file and export to rds for faster reading especially during the
-# development phase
+# development phase. We then read the RDS file
+# Transformations done while reading:
+# - strip white spaces
 if (!file.exists(rdsfile)) {
-  saveRDS(read.csv(dest), file = rdsfile)
+  saveRDS(read.csv(dest, strip.white = TRUE), file = rdsfile)
 }
-
-data <- readRDS(rdsfile)
+data <- as_tibble(readRDS(rdsfile))
