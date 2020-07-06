@@ -133,7 +133,7 @@ multiplied by the scalar in `xDMGEXP`.
 An important point to note is that we should substitute the `numeric 0..8` values
 first to avoid confusion when substituting for the `+` symbol. 
 
-```{r}
+```{r, cache=TRUE}
 # Since the list of values to substitute is not a lot we can do this 
 # individually. to simplify convert all to uppercase
 data$PROPDMGEXP <- toupper(data$PROPDMGEXP)
@@ -143,14 +143,56 @@ data$CROPDMGEXP <- toupper(data$CROPDMGEXP)
 # substitution is done
 
 # replace the numeric values with 10
-data[data$PROPDMGEXP == as.character(c(1:8)), "PROPDMGEXP"] <- "10"
+data[data$PROPDMGEXP %in% as.character(c(1:8)), "PROPDMGEXP"] <- "10"
+data[data$CROPDMGEXP %in% as.character(c(1:8)), "CROPDMGEXP"] <- "10"
 
 # replace the 0 values 
 data[data$PROPDMGEXP == "", "PROPDMGEXP"] <- "0"
-data[grepl("-|\\?", x$PROPDMGEXP), "PROPDMGEXP"] <- "0"
+data[data$CROPDMGEXP == "", "CROPDMGEXP"] <- "0"
 
+data[grepl("-|\\?", data$PROPDMGEXP), "PROPDMGEXP"] <- "0"
+data[grepl("-|\\?", data$CROPDMGEXP), "CROPDMGEXP"] <- "0"
+
+# replace +
+data[data$PROPDMGEXP == "+", "PROPDMGEXP"] <- "1"
+data[data$CROPDMGEXP == "+", "CROPDMGEXP"] <- "1"
+
+# replace H
+data[data$PROPDMGEXP == "H", "PROPDMGEXP"] <- "100"
+data[data$CROPDMGEXP == "H", "CROPDMGEXP"] <- "100"
+
+# replace K
+data[data$PROPDMGEXP == "K", "PROPDMGEXP"] <- "1000"
+data[data$CROPDMGEXP == "K", "CROPDMGEXP"] <- "1000"
+
+# replace M
+data[data$PROPDMGEXP == "M", "PROPDMGEXP"] <- "1000000"
+data[data$CROPDMGEXP == "M", "CROPDMGEXP"] <- "1000000"
+
+# replace B
+data[data$PROPDMGEXP == "B", "PROPDMGEXP"] <- "1000000000"
+data[data$CROPDMGEXP == "B", "CROPDMGEXP"] <- "1000000000"
+
+# create the actual amount in USD for property and crop dmg. we will also
+# create a new variable which is the sum of both
+data <- data %>% 
+  mutate(PROPAMT = as.numeric(PROPDMGEXP) * PROPDMG) %>%
+  mutate(CROPAMT = as.numeric(CROPDMGEXP) * CROPDMG) %>%
+  mutate(TOTALAMT = CROPAMT + PROPAMT)
 ```
 
+Once we have normalized the crop and property damage values we can then proceed
+to summarize the data
+
+```{r}
+econ_summ <- data %>% 
+  group_by(EVTYPE) %>% 
+  summarise(PROP_TOTAL = sum(PROPAMT), 
+            CROP_TOTAL = sum(CROPAMT), 
+            TOTAL = sum(TOTALAMT), .groups = "keep")
+
+econ_summ <- merge(econ_summ, ev_freq, by = "EVTYPE")
+```
 
 ## Results
 
