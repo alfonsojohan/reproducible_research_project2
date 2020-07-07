@@ -15,6 +15,12 @@ The final project for the course Reproducible Research is the study of the
 impact of weather events on population health and economic consequences. 
 To do so, we will explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
 
+The questions we are trying to answer are:
+
+- Across the United States, which types of events are most harmful with 
+respect to population health?
+- Across the United States, which types of events have the greatest economic consequences?
+
 The explanation of the data can be found at the following links:
 
 - [National Weather Service Storm Data Documentation][1]
@@ -46,7 +52,7 @@ The source data is compressed in bzip2 format. It is a CSV file.
 Fortunately R has the capability to directly read CSV files compressed in 
 bzip2 format.
 
-```{r, cache=TRUE}
+```{r}
 # download source data
 url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 dest <- "stormdata.csv.bz2"
@@ -77,7 +83,7 @@ text which causes R to treat them differently. Some EVTYPE labels also include
 white spaces. To simplify the analysis, leading and trailing white spaces
 will be removed and all of the event type names will be converted to uppercase
 
-```{r, cache=TRUE}
+```{r}
 # Trim white spaces and convert all EVTYPE to upper case
 data$EVTYPE <- toupper(trimws(data$EVTYPE))
 ```
@@ -89,17 +95,17 @@ summarize the data by the total  fatalities, total injuries, frequency of events
 We can then combine total fatalities and total injuries into a single variable called
 total_casualty.
 
-```{r, cache=TRUE}
+```{r}
 health_summary <- data %>% 
   group_by(EVTYPE) %>% 
-  summarise(total_fatalities = sum(FATALITIES), 
-            total_injuries = sum(INJURIES), .groups = "keep")
+  summarise(TF = sum(FATALITIES), 
+            TI = sum(INJURIES), .groups = "keep")  %>%
+  mutate(TOTAL = TF + TI)
 
-ev_freq <- data %>% group_by(EVTYPE) %>% tally()
+ev_freq <- data %>% group_by(EVTYPE) %>% tally(name = "COUNT")
 
 # Merge the count and then calculate the total casualty 
-health_summary <- merge(health_summary, ev_freq, by = "EVTYPE") %>%
-  mutate(total_casualty = total_fatalities + total_injuries)
+health_summary <- merge(health_summary, ev_freq, by = "EVTYPE")
 ```
 
 To see the effect of the events on the economic factors we can do a summary by 
@@ -133,7 +139,7 @@ multiplied by the scalar in `xDMGEXP`.
 An important point to note is that we should substitute the `numeric 0..8` values
 first to avoid confusion when substituting for the `+` symbol. 
 
-```{r, cache=TRUE}
+```{r}
 # Since the list of values to substitute is not a lot we can do this 
 # individually. to simplify convert all to uppercase
 data$PROPDMGEXP <- toupper(data$PROPDMGEXP)
@@ -187,13 +193,29 @@ to summarize the data
 ```{r}
 econ_summ <- data %>% 
   group_by(EVTYPE) %>% 
-  summarise(PROP_TOTAL = sum(PROPAMT), 
-            CROP_TOTAL = sum(CROPAMT), 
+  summarise(TP = sum(PROPAMT), 
+            TC = sum(CROPAMT), 
             TOTAL = sum(TOTALAMT), .groups = "keep")
 
 econ_summ <- merge(econ_summ, ev_freq, by = "EVTYPE")
 ```
 
+The question of interest is with relation to harmful events and economic impact.
+With this, we can then exclude events that do not have any health effect or
+economic impact.
+
+For economic impact, we only include those with either a property damage or crop
+damage amount
+
+For health impact, we include those either with fatality or injury.
+
+For both we exclude unknown events i.e. those with value `?`
+
+```{r}
+hs <- health_summary %>% filter(TOTAL > 0 & EVTYPE != "9")
+es <- econ_summ %>% filter(TOTAL > 0 & EVTYPE != "?")
+```
+
 ## Results
 
--- TODO --
+
