@@ -1,13 +1,21 @@
 ---
-# TODO Update the title once we have the findings
-title: "Impact of Weather Events to Health and Economy in United States"
+title: "Tornado and Floods as Major Impactors to Health and Economy in United States"
 author: "A. Johan"
 output: html_document
 ---
 
 ## Synopsis
 
--- TODO --
+Using the data provided by the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, we can summarize the data to identify
+the events that adversely impact the population in terms of fatality, injuries
+as well as events that cause the greatest damage to property and crops in the 
+United States.
+
+The findings of this analysis is that **Tornado** causes the greatest
+loss of life and injury. 
+
+**Flood** causes the highest economic loss overall, crops
+are more affected by **Drought**.
 
 ## Introduction 
 
@@ -65,16 +73,7 @@ if (!file.exists(dest)){
   download.file(url = url, destfile = dest, quiet = TRUE)
 }
 
-# TODO uncomment below prior to submission
-# data <- as_tibble(read.csv(dest))
-
-# TODO remove this before submissions
-if (!file.exists(rdsfile)) {
-  saveRDS(read.csv(dest), file = rdsfile)
-}
-if(length(ls(pattern = "data")) == 0) {
-  data <- as_tibble(readRDS(rdsfile))
-}
+data <- as_tibble(read.csv(dest))
 ```
 
 ### Data Cleaning and Transformation
@@ -293,3 +292,13 @@ ggplot(top10, aes(EVTYPE, TOTAL)) +
          y = "Damage (billion USD)") +
   scale_y_continuous(labels = function(x){x/1000000000})
 ```
+
+## Conclusion
+
+**Tornado** causes the greatest loss of life and injury in the United States.
+
+Overall, **Flood** causes the greatest property damage. However, for crops they
+are more likely to be affected by **Drought**.
+
+This analysis, should pave way for next steps to mitigate the effects of flooding
+and drouught.
