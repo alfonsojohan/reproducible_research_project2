@@ -34,10 +34,12 @@ The explanation of the data can be found at the following links:
 For this analysis we will be using the following libraries:
 
 - dplyr
+- ggplot2
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Load the libraries 
 library(dplyr)
+library(ggplot2)
 ```
 
 
@@ -71,9 +73,11 @@ if (!file.exists(rdsfile)) {
   saveRDS(read.csv(dest), file = rdsfile)
 }
 if(length(ls(pattern = "data")) == 0) {
-data <- as_tibble(readRDS(rdsfile))
+  data <- as_tibble(readRDS(rdsfile))
 }
 ```
+
+### Data Cleaning and Transformation
 
 Initial inspection of the data:
 
@@ -88,8 +92,7 @@ will be removed and all of the event type names will be converted to uppercase
 data$EVTYPE <- toupper(trimws(data$EVTYPE))
 ```
 
-### Data Cleaning and Transformation
-
+#### Fatalities & Injuries
 To see effect of event to fatalities and injuries in the population we can 
 summarize the data by the total  fatalities, total injuries, frequency of events.
 We can then combine total fatalities and total injuries into a single variable called
@@ -107,6 +110,8 @@ ev_freq <- data %>% group_by(EVTYPE) %>% tally(name = "COUNT")
 # Merge the count and then calculate the total casualty 
 health_summary <- merge(health_summary, ev_freq, by = "EVTYPE")
 ```
+
+#### Property and Crop Damage
 
 To see the effect of the events on the economic factors we can do a summary by 
 the variable `PROPDMG` and `CROPDMG`. Care should be taken however since
@@ -212,10 +217,79 @@ For health impact, we include those either with fatality or injury.
 For both we exclude unknown events i.e. those with value `?`
 
 ```{r}
-hs <- health_summary %>% filter(TOTAL > 0 & EVTYPE != "9")
-es <- econ_summ %>% filter(TOTAL > 0 & EVTYPE != "?")
+health_summary <- health_summary %>% filter(EVTYPE != "?")
+hs1 <- health_summary %>% filter(TOTAL > 0) %>% select(EVTYPE, TOTAL, COUNT)
+hs2 <- health_summary %>% filter(TF > 0) %>% select(EVTYPE, TF, COUNT)
+hs3 <- health_summary %>% filter(TI > 0) %>% select(EVTYPE, TI, COUNT)
+
+econ_summ <- econ_summ %>% filter(EVTYPE != "?")
+es1 <- econ_summ %>% filter(TOTAL > 0) %>% select(EVTYPE, TOTAL, COUNT)
+es2 <- econ_summ %>% filter(TP > 0) %>% select(EVTYPE, TP, COUNT)
+es3 <- econ_summ %>% filter(TC > 0) %>% select(EVTYPE, TC, COUNT)
 ```
 
 ## Results
 
+### Fatility and Injury
 
+Looking at the summmary, the event that causes the highest amount of casualty
+(injury AND fatility) is:
+```{r}
+hs1[which.max(hs1$TOTAL), ]
+```
+The event that causes the highest amount of fatality:
+```{r}
+hs2[which.max(hs2$TF), ]
+```
+
+The event that causes the highest amount of injury:
+```{r}
+hs3[which.max(hs3$TI), ]
+```
+
+Since there are too many events to make a meaningful plot, we will only
+plot the top 10 events to see how it compares to each other
+
+```{r}
+# get the top 10 total
+top10h <- hs1 %>% slice_max(TOTAL, n = 10)
+
+ggplot(top10h, aes(EVTYPE, TOTAL)) + 
+    geom_col(fill = "#00abff") + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(title = "Total Casualty for Top 10 Events", 
+         x = "", 
+         y = "Casualty (Person)")
+```
+
+### Property and Crop Damage
+
+The event that causes the highest amount of damage (property AND crop) is:
+```{r}
+es1[which.max(es1$TOTAL), ]
+```
+
+The event that causes the highest amount of property damage:
+```{r}
+es2[which.max(es2$TP), ]
+```
+
+The event that causes the highest amount of crop damage:
+```{r}
+es3[which.max(es3$TC), ]
+```
+
+As before, we will only plot the top 10 events to see how it compares to each other
+
+```{r}
+# get the top 10 total
+top10 <- es1 %>% slice_max(TOTAL, n = 10)
+
+ggplot(top10, aes(EVTYPE, TOTAL)) + 
+    geom_col(fill = "#e74c3c") + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(title = "Economic Impact for Top 10 Events", 
+         x = "", 
+         y = "Damage (billion USD)") +
+  scale_y_continuous(labels = function(x){x/1000000000})
+```
